@@ -1,163 +1,98 @@
 /* ══════════════════════════════════════════════
-   BLOOM INTELLIGENCE — main.js
+   MUTAVO — main.js
    ══════════════════════════════════════════════ */
 
-/* ─── Footer Year ─── */
-document.getElementById('year').textContent = new Date().getFullYear();
+/* ─── Nav scroll effect ─── */
+const nav = document.getElementById('nav');
+if (nav) {
+  const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 40);
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+}
 
-/* ─── Navbar Scroll Effect ─── */
-const navbar = document.getElementById('navbar');
-window.addEventListener('scroll', () => {
-  navbar.classList.toggle('scrolled', window.scrollY > 40);
-}, { passive: true });
-
-/* ─── Mobile Menu Toggle ─── */
+/* ─── Mobile nav toggle ─── */
 const navToggle = document.getElementById('navToggle');
-const navLinks  = document.querySelector('.nav-links');
-navToggle.addEventListener('click', () => {
-  navLinks.classList.toggle('open');
-});
-navLinks.querySelectorAll('a').forEach(link => {
-  link.addEventListener('click', () => navLinks.classList.remove('open'));
-});
-
-
-/* ─── Scroll Reveal (Intersection Observer) ─── */
-(function initReveal() {
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
+const navLinks  = document.getElementById('navLinks');
+if (navToggle && navLinks) {
+  navToggle.addEventListener('click', () => {
+    const open = navLinks.classList.toggle('open');
+    navToggle.setAttribute('aria-expanded', open);
+  });
+  navLinks.querySelectorAll('a, button').forEach(el => {
+    el.addEventListener('click', () => {
+      navLinks.classList.remove('open');
+      navToggle.setAttribute('aria-expanded', 'false');
     });
-  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  });
+}
 
-  document.querySelectorAll('.reveal, .fade-up').forEach(el => observer.observe(el));
-})();
-
-/* ─── Animated Stat Counters ─── */
-(function initCounters() {
-  const counters = document.querySelectorAll('.stat-number[data-target]');
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (!entry.isIntersecting) return;
-      const el     = entry.target;
-      const target = +el.dataset.target;
-      const dur    = 1800;
-      const step   = 16;
-      const steps  = dur / step;
-      let  current = 0;
-
-      const timer = setInterval(() => {
-        current += target / steps;
-        if (current >= target) {
-          el.textContent = target;
-          clearInterval(timer);
-        } else {
-          el.textContent = Math.floor(current);
-        }
-      }, step);
-
-      observer.unobserve(el);
-    });
-  }, { threshold: 0.5 });
-
-  counters.forEach(c => observer.observe(c));
-})();
-
-/* ─── Smooth Scroll for Anchor Links ─── */
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-  anchor.addEventListener('click', e => {
-    const target = document.querySelector(anchor.getAttribute('href'));
+/* ─── Smooth scroll for anchor links ─── */
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const id = a.getAttribute('href').slice(1);
+    const target = document.getElementById(id);
     if (!target) return;
     e.preventDefault();
-    const offset = navbar.offsetHeight + 16;
-    window.scrollTo({ top: target.offsetTop - offset, behavior: 'smooth' });
+    const navH = nav ? nav.offsetHeight : 0;
+    window.scrollTo({ top: target.offsetTop - navH, behavior: 'smooth' });
   });
 });
 
-/* ─── Hero Particles ─── */
-(function initParticles() {
-  const canvas = document.getElementById('heroCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
+/* ─── Section reveal ─── */
+(function initReveal() {
+  const sections = document.querySelectorAll('.section');
+  if (!sections.length) return;
 
-  const COLORS = [
-    'rgba(106,172,69,',   // --green
-    'rgba(150,204,110,',  // --green-light
-    'rgba(196,162,74,',   // --gold
-    'rgba(58,108,38,',    // --green-dark
-  ];
-
-  let particles = [];
-  let raf;
-
-  function resize() {
-    canvas.width  = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+  function revealSection(sec) {
+    sec.querySelectorAll('.reveal-block, .stagger').forEach(el => {
+      el.classList.add('revealed');
+    });
   }
 
-  function makeParticle() {
-    return {
-      x:          Math.random() * canvas.width,
-      y:          Math.random() * canvas.height,
-      r:          Math.random() * 1.4 + 0.4,
-      color:      COLORS[Math.floor(Math.random() * COLORS.length)],
-      alpha:      Math.random() * 0.35 + 0.08,
-      vx:         (Math.random() - 0.5) * 0.25,
-      vy:         -(Math.random() * 0.35 + 0.08),
-      aDir:       Math.random() > 0.5 ? 1 : -1,
-      aSpeed:     Math.random() * 0.0025 + 0.001,
-    };
-  }
+  // Hero reveals immediately on load
+  setTimeout(() => {
+    const hero = document.getElementById('sec-0');
+    if (hero) revealSection(hero);
+  }, 150);
 
-  function init() {
-    particles = [];
-    const count = Math.min(Math.floor((canvas.width * canvas.height) / 11000), 110);
-    for (let i = 0; i < count; i++) particles.push(makeParticle());
-  }
+  // All other sections reveal when they enter the viewport
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      revealSection(entry.target);
+      observer.unobserve(entry.target);
+    });
+  }, { threshold: 0.1 });
 
-  function tick() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    for (const p of particles) {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.alpha += p.aDir * p.aSpeed;
-      if (p.alpha > 0.45) p.aDir = -1;
-      if (p.alpha < 0.05) p.aDir =  1;
-
-      // wrap
-      if (p.y < -6)                  p.y = canvas.height + 6;
-      if (p.x < -6)                  p.x = canvas.width  + 6;
-      if (p.x > canvas.width  + 6)   p.x = -6;
-
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = p.color + p.alpha.toFixed(3) + ')';
-      ctx.fill();
-    }
-
-    raf = requestAnimationFrame(tick);
-  }
-
-  resize();
-  init();
-  tick();
-
-  window.addEventListener('resize', () => { resize(); init(); }, { passive: true });
+  sections.forEach((sec, i) => {
+    if (i > 0) observer.observe(sec);
+  });
 })();
 
-/* ─── Hero Fade-up on Load ─── */
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    document.querySelector('.hero-content')?.classList.add('visible');
-  }, 100);
-});
+/* ─── Section dots ─── */
+(function initDots() {
+  const dots = document.querySelectorAll('.sec-dot');
+  const sections = document.querySelectorAll('.section');
+  if (!dots.length || !sections.length) return;
 
-/* ─── Booking Modal ─── */
-(function initBookingModal() {
+  function update() {
+    const h = window.innerHeight;
+    let active = 0;
+    sections.forEach((sec, i) => {
+      if (sec.getBoundingClientRect().top <= h * 0.45) active = i;
+    });
+    if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 4) {
+      active = sections.length - 1;
+    }
+    dots.forEach((dot, i) => dot.classList.toggle('active', i === active));
+  }
+
+  window.addEventListener('scroll', update, { passive: true });
+  update();
+})();
+
+/* ─── Booking modal ─── */
+(function initBooking() {
   const overlay    = document.getElementById('bookingModal');
   const modalBox   = document.getElementById('bookingModalBox');
   const closeBtn   = document.getElementById('modalClose');
@@ -168,6 +103,8 @@ window.addEventListener('load', () => {
   const step2Sub   = document.getElementById('step2Sub');
   const calendlyEl = document.getElementById('calendlyContainer');
 
+  if (!overlay) return;
+
   function openModal() {
     overlay.classList.add('active');
     document.body.style.overflow = 'hidden';
@@ -176,57 +113,48 @@ window.addEventListener('load', () => {
   function closeModal() {
     overlay.classList.remove('active');
     document.body.style.overflow = '';
-    // Reset fully after fade-out
     setTimeout(() => {
       showStep1(false);
-      form.reset();
-      calendlyEl.innerHTML = '';
+      form?.reset();
+      if (calendlyEl) calendlyEl.innerHTML = '';
     }, 380);
   }
 
   function showStep1(animate = true) {
-    step2.classList.add('modal-step--hidden');
-    step1.classList.remove('modal-step--hidden');
-    modalBox.classList.remove('step2-active');
-    if (!animate) return;
-    // Scroll modal back to top
-    modalBox.scrollTop = 0;
+    step2?.classList.add('modal-step--hidden');
+    step1?.classList.remove('modal-step--hidden');
+    modalBox?.classList.remove('step2-active');
+    if (animate && modalBox) modalBox.scrollTop = 0;
   }
 
   function showStep2(firstName, lastName, email) {
-    // Build a friendly greeting for the subtitle
-    step2Sub.textContent =
-      `Your details are pre-filled, ${firstName} — just pick a date and time below.`;
+    if (step2Sub) {
+      step2Sub.textContent = `Your details are pre-filled, ${firstName} — just pick a date and time below.`;
+    }
+    step1?.classList.add('modal-step--hidden');
+    step2?.classList.remove('modal-step--hidden');
+    modalBox?.classList.add('step2-active');
+    if (modalBox) modalBox.scrollTop = 0;
 
-    step1.classList.add('modal-step--hidden');
-    step2.classList.remove('modal-step--hidden');
-    modalBox.classList.add('step2-active');
-    modalBox.scrollTop = 0;
-
-    // Small delay so the DOM is fully painted before Calendly measures the container
-    calendlyEl.innerHTML = '';
-    setTimeout(() => {
-      Calendly.initInlineWidget({
-        url: 'https://calendly.com/maxx-bloom-intelligence/30min?hide_gdpr_banner=1&primary_color=6aac45',
-        parentElement: calendlyEl,
-        prefill: {
-          name:  `${firstName} ${lastName}`,
-          email: email
-        }
-      });
-    }, 80);
+    if (calendlyEl && typeof Calendly !== 'undefined') {
+      calendlyEl.innerHTML = '';
+      setTimeout(() => {
+        Calendly.initInlineWidget({
+          url: 'https://calendly.com/maxx-mutavo/30min?hide_gdpr_banner=1&primary_color=c9a45c',
+          parentElement: calendlyEl,
+          prefill: { name: `${firstName} ${lastName}`, email }
+        });
+      }, 80);
+    }
   }
 
-  // Open modal on all [data-book] buttons
+  // All [data-book] buttons open the modal
   document.querySelectorAll('[data-book]').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.preventDefault();
-      openModal();
-    });
+    btn.addEventListener('click', e => { e.preventDefault(); openModal(); });
   });
 
-  closeBtn.addEventListener('click', closeModal);
-  backBtn.addEventListener('click', () => showStep1());
+  closeBtn?.addEventListener('click', closeModal);
+  backBtn?.addEventListener('click', () => showStep1());
 
   overlay.addEventListener('click', e => {
     if (e.target === overlay) closeModal();
@@ -236,13 +164,12 @@ window.addEventListener('load', () => {
     if (e.key === 'Escape' && overlay.classList.contains('active')) closeModal();
   });
 
-  // Step 1 form submit → go to Calendly with everything pre-filled
-  form.addEventListener('submit', e => {
+  form?.addEventListener('submit', e => {
     e.preventDefault();
     if (!form.checkValidity()) { form.reportValidity(); return; }
-    const firstName = document.getElementById('bi-firstName').value.trim();
-    const lastName  = document.getElementById('bi-lastName').value.trim();
-    const email     = document.getElementById('bi-email').value.trim();
+    const firstName = document.getElementById('mtv-firstName')?.value.trim() ?? '';
+    const lastName  = document.getElementById('mtv-lastName')?.value.trim() ?? '';
+    const email     = document.getElementById('mtv-email')?.value.trim() ?? '';
     showStep2(firstName, lastName, email);
   });
 })();
